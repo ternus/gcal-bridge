@@ -1,6 +1,7 @@
 {
   "keyfile": "keyfile.json",
-  "scopes": "https:\/\/www.googleapis.com\/auth\/calendar"
+  "scopes": "https:\/\/www.googleapis.com\/auth\/calendar",
+  "poll_time": 60,
   "domains": {
     "bar.com": {
       "account": "user@bar.com"
@@ -22,5 +23,5 @@
         }
       ]
     }
-  },
+  }
 }

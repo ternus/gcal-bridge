@@ -23,11 +23,10 @@ class Domain:
         except Exception as e:
             logging.critical("Failed to create delegated credentials for account %s.\n" + \
                             "Did you enable domain-wide delegation and authorize\n" + \
-                             "your key properly? See HOWTO.md.")
+                             "your key properly? See HOWTO.md. %s" % repr(e))
 
-        self.cal_svc = apiclient.discovery.build('calendar', 'v3', credentials=delegated_credentials)
+        self.cal_svc = apiclient.discovery.build('calendar', 'v3', credentials=self.credentials)
 
     def get_calendars(self):
 
         return self.cal_svc.calendarList().list().execute()
-        

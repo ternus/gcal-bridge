@@ -4,32 +4,47 @@ from oauth2client.service_account import ServiceAccountCredentials
 from httplib2 import Http
 from apiclient.discovery import build
 from pprint import pprint
+
 import json
+import gcalbridge
+import time
+import logging
 
-from .config import Config
-from .domain import Domain
+logging.basicConfig(level=logging.INFO)
 
+domains = {}
+calendars = {}
 
-def setup():
-
-    config = Config("config.json")
+def setup(config, domains, calendars):
 
     credentials = ServiceAccountCredentials.from_json_keyfile_name(
         config.keyfile,
         scopes=config.scopes)
 
-    domains = {}
-    
+    pprint(credentials)
+
     for domain in config.domains:
-        domains[domain] = Domain(domain, config.domains[domain], credentials)
-        
-        calendars = {}
-    for cal in config.calendars: 
-        calendars[cal] = SyncedCalendar(cal, config.calendars[cal], domains=domains)
+        domains[domain] = gcalbridge.Domain(domain,
+                                            config.domains[domain],
+                                            credentials)
+
+    pprint(domains)
+
+    for cal in config.calendars:
+        calendars[cal] = gcalbridge.SyncedCalendar(cal,
+                                                   config.calendars[cal],
+                                                   domains=domains)
+    pprint(calendars)
 
 
-calendar = build('calendar', 'v3', credentials=delegated_credentials)
+if __name__ == '__main__':
+    config = gcalbridge.config.Config("config.json")
+    setup(config, domains, calendars)
 
-pprint(calendar.calendarList().list().execute().get('items', []))
+    while True:
 
-pprint(calendar.events().list(calendarId=CALENDAR).execute())
+        for cal in calendars:
+            calendars[cal].sync()
+            calendars[cal].update()
+
+        time.sleep(config.poll_time)
