@@ -3,7 +3,10 @@
 import json
 import os.path
 
-class BadConfigError(RuntimeError): pass
+
+class BadConfigError(RuntimeError):
+    pass
+
 
 class Config:
 

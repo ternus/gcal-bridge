@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 
-from .config import BadConfigError
-from logging import info
-from pprint import pprint, pformat
+import logging
+from pprint import pformat
 from collections import defaultdict
 
+from .config import BadConfigError
+
+
 class Calendar:
+    """
+    Represents a single Google Calendar and the credentials required to
+    edit it.
+    """
 
     def __init__(self, config, domains=None, service=None):
 
@@ -14,7 +20,7 @@ class Calendar:
         self.sync_token = ""
         self.events = {}
 
-        info("Creating new calendar at %s with url %s" % (self.domain_id, self.url))
+        logging.info("Creating new calendar at %s with url %s" % (self.domain_id, self.url))
 
         if domains:
             if not self.domain_id in domains:
@@ -26,30 +32,45 @@ class Calendar:
             self.service = service
 
     def update_events_from_result(self, result):
+        """
+        Given an Events resource result, update our local events.
+        """
         updated = 0
         for event in result.get("items", []):
             id = event['id']
             if (not id in self.events) or self.events[id] != event:
                 updated += 1
                 self.events[event['id']] = event
-        info("Updated %d events" % updated)
+        logging.info("Updated %d events" % updated)
         return updated
 
     def update_events(self):
+        """
+        Get events from Google and update our local events using
+        update_events_from_result.
+
+        Uses syncToken to optimize result retrieval.
+        """
         request = self.service.events().list(calendarId=self.url,
                                           syncToken=self.sync_token,
                                           showDeleted=True)
         updated = 0
         while request is not None:
             result = request.execute()
-            info(pformat(result))
+            logging.debug(pformat(result))
             updated += self.update_events_from_result(result)
             request = self.service.events().list_next(request, result)
         self.sync_token = result.get("nextSyncToken", "")
-        info("Got %d events. syncToken is now %s" % (len(self.events), self.sync_token))
+        logging.info("Got %d events. syncToken is now %s" % (len(self.events), self.sync_token))
         return updated
 
     def sync_event(self, event):
+        """
+        If `event` doesn't exist, create it with `add_event`; otherwise,
+        if `event` is newer than our version, patch it with our version.
+
+        Idempotent if `event` is already the latest version.
+        """
         eid = event['id']
         if eid in self.events:
             if self.events[eid]['updated'] < event['updated']:
@@ -58,21 +79,30 @@ class Calendar:
             self.add_event(event)
 
     def add_event(self, event):
+        """
+        Add an event, then update our events with the result.
+        """
         result = self.service.events().insert(calendarId=self.url, body=event).execute()
+        logging.debug(pformat(result))
         self.update_events_from_result(result)
 
     def patch_event(self, event_id, new_event):
+        """
+        Unconditionally patch the event referenced by `event_id` with the
+        data in `event`.
+        """
         result = self.service.events().patch(calendarId=self.url,
                                              eventId=event_id,
                                              body=new_event).execute()
-        pprint(result)
-
+        logging.debug(pformat(result))
         self.update_events_from_result(result)
+
 
 class SyncedCalendar:
     """
-    A collection of Calendar objects that should all have the same set of events.
+    A collection of Calendars to be synced.
     """
+
     def __init__(self, name, config, domains=None):
         self.name = name
         self.calendars = []
@@ -94,15 +124,19 @@ class SyncedCalendar:
         return result
 
     def sync(self):
+        """
+        Update calendar info, getting the latest events. Then, for each event,
+        add or update that event as needed.
+        """
         for cal in self.calendars:
+            logging.info("Updating calendar: %s" % cal.url)
             cal.update_events()
-            pprint(cal.events)
+            logging.debug(pformat(cal.events))
             for eid, event in cal.events.iteritems():
                 if not eid in self.event_set:
                     self.event_set[eid] = defaultdict(lambda: 0)
                 self.event_set[eid][cal.url] = event['updated']
 
-    def update(self):
         for eid in self.event_set:
             event = self.get_event(eid)
             for cal in self.calendars:

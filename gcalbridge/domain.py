@@ -1,9 +1,12 @@
-# A Google Apps domain
+#!/usr/bin/env python
 
 from httplib2 import Http
-import logging
-from .config import BadConfigError
 import apiclient.discovery
+
+import logging
+
+from .config import BadConfigError
+
 
 class Domain:
     """
