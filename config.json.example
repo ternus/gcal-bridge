@@ -1,0 +1,29 @@
+{
+	"sites": {
+		"foo.com": {
+			"acct_name": "test-acct-foo",
+			"keyfile": "foo-12345.json",
+		},
+		"bar.com": {
+			"acct_name": "test-acct-bar",
+			"keyfile": "bar-12345.json",
+		}
+	}
+	"calendars": [
+	{
+		"id": "room_1",
+			"calendars": [
+
+			{
+				"site": "foo.com",
+				"url": "foo.com_12345@resource.calendar.google.com"
+			},
+			{
+				"site": "bar.com",
+				"url": "bar.com_12345@resource.calendar.google.com"
+			}
+			]
+	}
+	]
+
+}
