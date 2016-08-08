@@ -3,14 +3,16 @@
 import logging
 from pprint import pformat
 from collections import defaultdict
+from apiclient.errors import HttpError
 
 from .config import BadConfigError
 
 MAX_ACTIONS_PER_BATCH = 900
 
+
 class Calendar:
     """
-    Represents a single Google Calendar and the credentials required to
+    Represents a single Google Calendar and the domain service required to
     edit it.
     """
 
@@ -18,26 +20,63 @@ class Calendar:
 
         self.domain_id = config['domain']
         self.url = config['url']
+        self.name = self.url
         self.sync_token = ""
         self.events = {}
         self.batch = None
         self.batch_count = 0
+        self.read_only = False
+        self.calendar_metadata = None
 
         logging.info("Creating new calendar at %s with url %s" % (self.domain_id, self.url))
 
         if domains:
             if not self.domain_id in domains:
-                raise BadConfigError("Domain %s referenced in calendar config not defined." % domain_id)
+                raise BadConfigError("Domain %s referenced in calendar config not defined." % self.domain_id)
             self.domain = domains[self.domain_id]
-            self.service = self.domain.cal_svc
+            self.service = self.domain.get_service()
 
         if service:
             self.service = service
+
+        # Perform self-checking
+
+        try:
+            calendars = self.domain.get_calendars()
+        except HttpError as e:
+            logging.critical("Error while trying to load calendar %s: %s", self.url, repr(e))
+            raise e
+
+        for c in calendars.get('items', []):
+            if c['id'] == self.url:
+                self.calendar_metadata = c
+                break
+
+        if not self.calendar_metadata:
+            logging.critical("Couldn't find calendar %s in domain %s!", self.url, self.domain_id)
+            raise BadConfigError
+        # Now that we have metadata, we can use a name instead of a URL
+
+        self.name = "%s [%s]" % (self.calendar_metadata['summary'], self.domain_id)
+
+        if not (self.calendar_metadata['accessRole'] in ["owner", "writer"]
+                or
+                self.read_only and
+                    self.calendar_metadata['accessRole'] == "reader"):
+            logging.critical("Permission '%s' on calendar %s is too restrictive!",
+                             self.calendar_metadata['accessRole'],
+                             self.url)
+            raise RuntimeError
 
     def update_events_from_result(self, result, exception=None):
         """
         Given an Events resource result, update our local events.
         """
+        if result is None:
+            logging.warn("Callback indicated failure -- exception: %s", exception)
+            logging.debug(pformat(result))
+            logging.debug(pformat(exception))
+            return 0
         updated = 0
         for event in result.get("items", []):
             id = event['id']
@@ -81,7 +120,7 @@ class Calendar:
         """
         Execute the currently active batch.
         """
-        logging.debug("Calendar %s committing batch of %d" % (self.url, self.batch_count) )
+        logging.debug("Calendar %s committing batch of %d" % (self.url, self.batch_count))
         if not self.batch:
             logging.warn("commit_batch called but no batch was started!")
             return
@@ -115,10 +154,14 @@ class Calendar:
         """
         eid = event['id']
         if eid in self.events:
-            if self.events[eid]['sequence'] < event['sequence']:
+            my_event = self.events[eid]
+            if my_event['status'] == 'cancelled' and event['status'] == 'cancelled':
+                logging.debug("Avoiding patching mutually cancelled event.")
+                return
+            if my_event['sequence'] < event['sequence']:
                 logging.info(pformat(self.events[eid]))
                 logging.info(pformat(event))
-                self.update_event(eid, event)
+                self.patch_event(eid, event)
         else:
             self.add_event(event)
 

@@ -13,7 +13,9 @@ class Config:
     defaults = {
         "scopes": "https://www.googleapis.com/auth/calendar",
         "keyfile": "keyfile.json",
-        "sites": {
+        "poll_time": 5,
+        "max_exceptions": 5,
+        "domains": {
         },
         "calendars": []
     }
@@ -22,6 +24,7 @@ class Config:
         "scopes": "One or more scopes - see https://developers.google.com/identity/protocols/googlescopes",
         "keyfile": "Path to a keyfile for a service account - see https://developers.google.com/identity/protocols/OAuth2ServiceAccount",
         "poll_time": "Time to wait while polling",
+        "max_exceptions": "Number of exceptions to encounter before exiting"
     }
 
     def __init__(self, filename="config.json"):
