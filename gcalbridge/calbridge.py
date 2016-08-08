@@ -6,6 +6,7 @@ from collections import defaultdict
 
 from .config import BadConfigError
 
+MAX_ACTIONS_PER_BATCH = 900
 
 class Calendar:
     """
@@ -19,6 +20,8 @@ class Calendar:
         self.url = config['url']
         self.sync_token = ""
         self.events = {}
+        self.batch = None
+        self.batch_count = 0
 
         logging.info("Creating new calendar at %s with url %s" % (self.domain_id, self.url))
 
@@ -31,7 +34,7 @@ class Calendar:
         if service:
             self.service = service
 
-    def update_events_from_result(self, result):
+    def update_events_from_result(self, result, exception=None):
         """
         Given an Events resource result, update our local events.
         """
@@ -64,6 +67,45 @@ class Calendar:
         logging.info("Got %d events. syncToken is now %s" % (len(self.events), self.sync_token))
         return updated
 
+    def begin_batch(self):
+        """
+        Start a new batch of actions.
+        """
+        logging.debug("Calendar %s starting new batch" % self.url)
+        if self.batch:
+            logging.warn("begin_batch called with active batch! Trying to commit")
+            self.commit_batch()
+        self.batch = self.service.new_batch_http_request()
+
+    def commit_batch(self):
+        """
+        Execute the currently active batch.
+        """
+        logging.debug("Calendar %s committing batch of %d" % (self.url, self.batch_count) )
+        if not self.batch:
+            logging.warn("commit_batch called but no batch was started!")
+            return
+        result = self.batch.execute()
+        logging.debug(pformat(result))
+        self.batch = None
+        self.batch_count = 0
+
+    def _action_to_batch(self, action):
+        """
+        Add an action to the currently active batch. If the batch contains more
+        than MAX_ACTIONS_PER_BATCH actions, commit it and start a new one.
+        """
+        if self.batch:
+            self.batch.add(action, callback=lambda request_id, response, exception:
+                           self.update_events_from_result(response, exception=exception))
+            self.batch_count += 1
+            if self.batch_count > MAX_ACTIONS_PER_BATCH:
+                self.commit_batch()
+                self.begin_batch()
+        else:
+            logging.critical("Tried to add a batch action but no batch was active!")
+            raise RuntimeError
+
     def sync_event(self, event):
         """
         If `event` doesn't exist, create it with `add_event`; otherwise,
@@ -73,29 +115,52 @@ class Calendar:
         """
         eid = event['id']
         if eid in self.events:
-            if self.events[eid]['updated'] < event['updated']:
-                self.patch_event(eid, event)
+            if self.events[eid]['sequence'] < event['sequence']:
+                logging.info(pformat(self.events[eid]))
+                logging.info(pformat(event))
+                self.update_event(eid, event)
         else:
             self.add_event(event)
+
+    def _process_action(self, action):
+        """
+        If we're running in batch mode, add the action to a batch.
+        Otherwise, execute the action immediately and update.
+        """
+        if self.batch:
+            return self._action_to_batch(action)
+        else:
+            result = action.execute()
+            logging.debug(pformat(result))
+            self.update_events_from_result(result)
+            return result
 
     def add_event(self, event):
         """
         Add an event, then update our events with the result.
         """
-        result = self.service.events().insert(calendarId=self.url, body=event).execute()
-        logging.debug(pformat(result))
-        self.update_events_from_result(result)
+        action = self.service.events().insert(calendarId=self.url, body=event)
+        return self._process_action(action)
 
     def patch_event(self, event_id, new_event):
         """
         Unconditionally patch the event referenced by `event_id` with the
         data in `event`.
         """
-        result = self.service.events().patch(calendarId=self.url,
+        action = self.service.events().patch(calendarId=self.url,
                                              eventId=event_id,
-                                             body=new_event).execute()
-        logging.debug(pformat(result))
-        self.update_events_from_result(result)
+                                             body=new_event)
+        return self._process_action(action)
+
+    def update_event(self, event_id, new_event):
+        """
+        Unconditionally update the event referenced by `event_id` with the
+        data in `event`.
+        """
+        action = self.service.events().update(calendarId=self.url,
+                                             eventId=event_id,
+                                             body=new_event)
+        return self._process_action(action)
 
 
 class SyncedCalendar:
@@ -132,6 +197,7 @@ class SyncedCalendar:
             logging.info("Updating calendar: %s" % cal.url)
             cal.update_events()
             logging.debug(pformat(cal.events))
+            cal.begin_batch()
             for eid, event in cal.events.iteritems():
                 if not eid in self.event_set:
                     self.event_set[eid] = defaultdict(lambda: 0)
@@ -141,3 +207,6 @@ class SyncedCalendar:
             event = self.get_event(eid)
             for cal in self.calendars:
                 cal.sync_event(event)
+
+        for cal in self.calendars:
+            cal.commit_batch()

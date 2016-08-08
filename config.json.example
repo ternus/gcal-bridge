@@ -2,6 +2,7 @@
   "keyfile": "keyfile.json",
   "scopes": "https:\/\/www.googleapis.com\/auth\/calendar",
   "poll_time": 60,
+  "max_exceptions": 5,
   "domains": {
     "bar.com": {
       "account": "user@bar.com"
