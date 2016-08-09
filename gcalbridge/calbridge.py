@@ -4,8 +4,7 @@ import logging
 from pprint import pformat
 from collections import defaultdict
 from apiclient.errors import HttpError
-
-from .config import BadConfigError
+from errors import BadConfigError
 
 MAX_ACTIONS_PER_BATCH = 900
 

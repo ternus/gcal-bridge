@@ -7,7 +7,7 @@ import os
 
 import logging
 
-from .config import BadConfigError
+from errors import BadConfigError
 
 
 class Domain:

@@ -1,11 +1,15 @@
-# Manage configuration.
+#!/usr/bin/env python
+
+"""Manage configuration.
+"""
 
 import json
 import os.path
+import logging
+from pprint import pformat
 
-
-class BadConfigError(RuntimeError):
-    pass
+from .domain import Domain
+from calbridge import SyncedCalendar
 
 
 class Config:
@@ -41,3 +45,24 @@ class Config:
                 raise BadConfigError(
                     "Config file %s missing needed config entry: %s [%s]" % \
                     (filename, k, self.config_needed[k]))
+
+    def setup(self):
+        """
+        Given a config, perform setup of sync system.
+        """
+
+        domains = {}
+        calendars = {}
+
+        for domain in self.domains:
+            domains[domain] = Domain(domain,
+                                     self.domains[domain])
+
+        logging.debug(pformat(domains))
+
+        for cal in self.calendars:
+            calendars[cal] = SyncedCalendar(cal,
+                                            self.calendars[cal],
+                                            domains=domains)
+        logging.debug(pformat(calendars))
+        return calendars
