@@ -10,7 +10,7 @@ from pprint import pformat
 
 
 from .domain import Domain
-from .calbridge import SyncedCalendar
+from .calendar import SyncedCalendar
 from .errors import BadConfigError
 
 
