@@ -36,14 +36,14 @@ class DomainTest(unittest.TestCase):
         self.assertEqual(d.domain, "foo.com")
         self.assertEqual(d.domain_config['account'], "foo@foo.com")
 
-    def test_creds_no_code(self):
-        with LogCapture() as l:
-            with self.assertRaises(FlowExchangeError):
-                d = domain.Domain("foo.com", self.conf.domains['foo.com'],
-                            authorize=True, code="")
-
-    def test_creds_bad_code(self):
-        with LogCapture() as l:
-            with self.assertRaises(FlowExchangeError):
-                d = domain.Domain("foo.com", self.conf.domains['foo.com'],
-                            authorize=True, code="bad code")
+    # def test_creds_no_code(self):
+    #     with LogCapture() as l:
+    #         with self.assertRaises(FlowExchangeError):
+    #             d = domain.Domain("foo.com", self.conf.domains['foo.com'],
+    #                         authorize=True, code="")
+    #
+    # def test_creds_bad_code(self):
+    #     with LogCapture() as l:
+    #         with self.assertRaises(FlowExchangeError):
+    #             d = domain.Domain("foo.com", self.conf.domains['foo.com'],
+    #                         authorize=True, code="bad code")

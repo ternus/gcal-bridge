@@ -7,6 +7,7 @@ Unit tests for config module"""
 
 import unittest
 from gcalbridge import config
+from gcalbridge.errors import BadConfigError
 import tempfile
 import os
 from copy import deepcopy
@@ -40,6 +41,6 @@ class ConfigTests(unittest.TestCase):
             d.pop(k)
             json.dump(d, self.fake_config_file)
             self.fake_config_file.close()
-            with self.assertRaises(config.BadConfigError):
+            with self.assertRaises(BadConfigError):
                 config.Config(self.fake_config_name)
             self.setUp()

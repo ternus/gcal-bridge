@@ -8,37 +8,19 @@ from apiclient.errors import HttpError
 from pprint import pformat
 
 import json
-import gcalbridge
 import time
 import logging
+import os
+
+import gcalbridge
 
 FORMAT = "[%(levelname)-8s:%(filename)-15s:%(lineno)4s: %(funcName)20.20s ] %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
-
-def setup(config):
-
-    domains = {}
-    calendars = {}
-
-    for domain in config.domains:
-        domains[domain] = gcalbridge.Domain(domain,
-                                            config.domains[domain])
-
-    logging.debug(pformat(domains))
-
-    for cal in config.calendars:
-        calendars[cal] = gcalbridge.SyncedCalendar(cal,
-                                                   config.calendars[cal],
-                                                   domains=domains)
-    logging.debug(pformat(calendars))
-    return calendars
-
-
 def main():
 
     config = gcalbridge.config.Config("config.json")
-    calendars = setup(config)
+    calendars = config.setup()
 
     sleep_time = config.poll_time
     exception_count = 0

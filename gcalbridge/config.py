@@ -8,8 +8,10 @@ import os.path
 import logging
 from pprint import pformat
 
+
 from .domain import Domain
-from calbridge import SyncedCalendar
+from .calbridge import SyncedCalendar
+from .errors import BadConfigError
 
 
 class Config:
