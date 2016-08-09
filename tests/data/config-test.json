@@ -1,5 +1,5 @@
 {
-  "client_id_file": "client_id.json",
+  "client_id_file": "client_id.json.example",
   "scopes": "https:\/\/www.googleapis.com\/auth\/calendar",
   "poll_time": 60,
   "max_exceptions": 5,

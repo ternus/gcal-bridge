@@ -1,0 +1,226 @@
+{
+  "kind": "calendar#events",
+  "defaultReminders": [],
+  "items": [
+    {
+      "status": "cancelled",
+      "kind": "calendar#event",
+      "end": {
+        "dateTime": "2016-08-06T17:00:00-07:00"
+      },
+      "created": "2016-08-08T21:48:32.000Z",
+      "iCalUID": "q6jko38v2l12v16ccqhbhl5oks@google.com",
+      "reminders": {
+        "useDefault": true
+      },
+      "htmlLink": "",
+      "sequence": 4,
+      "updated": "2016-08-08T21:48:32.865Z",
+      "summary": "renaming this event",
+      "start": {
+        "dateTime": "2016-08-06T16:00:00-07:00"
+      },
+      "etag": "\"2941385825730000\"",
+      "location": "Conf-Test-1",
+      "attendees": [
+        {
+          "email": "foo@foo.com",
+          "responseStatus": "needsAction"
+        },
+        {
+          "resource": true,
+          "displayName": "Conf-Test-1",
+          "email": "foo.com_1234567890123456789000@resource.calendar.google.com",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "organizer": {
+        "self": true,
+        "displayName": "Conf-Test-1",
+        "email": "bar.com_12345678901234567890@resource.calendar.google.com"
+      },
+      "creator": {
+        "email": "foo@bar.com"
+      },
+      "id": "q6jko38v2l12v16ccqhbhl5oks",
+      "hangoutLink": ""
+    },
+    {
+      "status": "cancelled",
+      "kind": "calendar#event",
+      "end": {
+        "dateTime": "2016-08-10T14:30:00-07:00"
+      },
+      "created": "2016-08-08T21:52:52.000Z",
+      "iCalUID": "ulcqk6pskpc3ka1sseknt386s8@google.com",
+      "reminders": {
+        "useDefault": true
+      },
+      "htmlLink": "",
+      "sequence": 2,
+      "updated": "2016-08-08T22:01:21.167Z",
+      "summary": "test event 3",
+      "start": {
+        "dateTime": "2016-08-10T13:00:00-07:00"
+      },
+      "etag": "\"2941387362334000\"",
+      "location": "Conf-Test-1",
+      "attendees": [
+        {
+          "email": "foo@foo.com",
+          "responseStatus": "needsAction"
+        },
+        {
+          "resource": true,
+          "displayName": "Conf-Test-1",
+          "email": "foo.com_1234567890123456789000@resource.calendar.google.com",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "organizer": {
+        "self": true,
+        "displayName": "Conf-Test-1",
+        "email": "bar.com_12345678901234567890@resource.calendar.google.com"
+      },
+      "creator": {
+        "email": "foo@bar.com"
+      },
+      "id": "ulcqk6pskpc3ka1sseknt386s8",
+      "hangoutLink": ""
+    },
+    {
+      "status": "cancelled",
+      "kind": "calendar#event",
+      "end": {
+        "dateTime": "2016-08-10T13:30:00-07:00"
+      },
+      "created": "2016-08-08T22:01:43.000Z",
+      "iCalUID": "g7ci9aildotukfkbotug46m63g@google.com",
+      "reminders": {
+        "useDefault": true
+      },
+      "htmlLink": "",
+      "sequence": 1,
+      "updated": "2016-08-08T22:02:10.648Z",
+      "summary": "test event 5",
+      "start": {
+        "dateTime": "2016-08-10T12:00:00-07:00"
+      },
+      "etag": "\"2941387461296000\"",
+      "location": "Conf-Test-1",
+      "attendees": [
+        {
+          "resource": true,
+          "self": true,
+          "displayName": "Conf-Test-1",
+          "email": "bar.com_12345678901234567890@resource.calendar.google.com",
+          "responseStatus": "needsAction"
+        },
+        {
+          "organizer": true,
+          "email": "foo@bar.com",
+          "responseStatus": "accepted"
+        }
+      ],
+      "organizer": {
+        "email": "foo@bar.com"
+      },
+      "creator": {
+        "email": "foo@bar.com"
+      },
+      "id": "g7ci9aildotukfkbotug46m63g",
+      "hangoutLink": ""
+    },
+    {
+      "status": "cancelled",
+      "kind": "calendar#event",
+      "end": {
+        "dateTime": "2016-08-10T14:00:00-07:00"
+      },
+      "created": "2016-08-08T22:02:46.000Z",
+      "iCalUID": "afgc16vn2jleapknqgf5mkc4o4@google.com",
+      "reminders": {
+        "useDefault": true
+      },
+      "htmlLink": "",
+      "sequence": 2,
+      "updated": "2016-08-08T22:03:23.679Z",
+      "summary": "test event 6",
+      "start": {
+        "dateTime": "2016-08-10T12:00:00-07:00"
+      },
+      "etag": "\"2941387607358000\"",
+      "location": "Conf-Test-1",
+      "attendees": [
+        {
+          "email": "foo@foo.com",
+          "responseStatus": "needsAction"
+        },
+        {
+          "resource": true,
+          "displayName": "Conf-Test-1",
+          "email": "foo.com_1234567890123456789000@resource.calendar.google.com",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "organizer": {
+        "self": true,
+        "displayName": "Conf-Test-1",
+        "email": "bar.com_12345678901234567890@resource.calendar.google.com"
+      },
+      "creator": {
+        "email": "foo@bar.com"
+      },
+      "id": "afgc16vn2jleapknqgf5mkc4o4",
+      "hangoutLink": ""
+    },
+    {
+      "status": "confirmed",
+      "kind": "calendar#event",
+      "end": {
+        "dateTime": "2016-08-10T14:30:00-07:00"
+      },
+      "created": "2016-08-08T22:03:39.000Z",
+      "iCalUID": "l15tp7a4nrfaeeb3uahtn3u4ig@google.com",
+      "reminders": {
+        "useDefault": true
+      },
+      "htmlLink": "",
+      "sequence": 0,
+      "updated": "2016-08-08T22:03:39.791Z",
+      "summary": "test event 7",
+      "start": {
+        "dateTime": "2016-08-10T12:00:00-07:00"
+      },
+      "etag": "\"2941387639582000\"",
+      "location": "Conf-Test-1",
+      "attendees": [
+        {
+          "email": "foo@foo.com",
+          "responseStatus": "accepted"
+        },
+        {
+          "resource": true,
+          "displayName": "Conf-Test-1",
+          "email": "foo.com_1234567890123456789000@resource.calendar.google.com",
+          "responseStatus": "accepted"
+        }
+      ],
+      "organizer": {
+        "self": true,
+        "displayName": "Conf-Test-1",
+        "email": "bar.com_12345678901234567890@resource.calendar.google.com"
+      },
+      "creator": {
+        "email": "foo@bar.com"
+      },
+      "id": "l15tp7a4nrfaeeb3uahtn3u4ig",
+      "hangoutLink": ""
+    }
+  ],
+  "updated": "2016-08-08T22:11:26.898Z",
+  "summary": "Conf-Test-1",
+  "etag": "\"p338edb4ktepcs0g\"",
+  "nextSyncToken": "CNDmrJTrss4CENDmrJTrss4CGAY=",
+  "timeZone": "America/Los_Angeles"
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-"""Manage configuration.
+"""
+Manage configuration.
 """
 
 import json
@@ -18,7 +19,7 @@ class Config:
 
     defaults = {
         "scopes": "https://www.googleapis.com/auth/calendar",
-        "keyfile": "keyfile.json",
+        "client_id_file": "client_id.json",
         "poll_time": 5,
         "max_exceptions": 5,
         "domains": {
@@ -28,7 +29,7 @@ class Config:
 
     config_needed = {
         "scopes": "One or more scopes - see https://developers.google.com/identity/protocols/googlescopes",
-        "keyfile": "Path to a keyfile for a service account - see https://developers.google.com/identity/protocols/OAuth2ServiceAccount",
+        "client_id_file": "Path to a client ID json file",
         "poll_time": "Time to wait while polling",
         "max_exceptions": "Number of exceptions to encounter before exiting"
     }
@@ -47,6 +48,17 @@ class Config:
                 raise BadConfigError(
                     "Config file %s missing needed config entry: %s [%s]" % \
                     (filename, k, self.config_needed[k]))
+
+        # Ensure our Client ID file exists, is readable, is valid JSON
+
+        if not os.path.isfile(self.client_id_file):
+            raise RuntimeError("Client ID file %s not found." % self.client_id_file)
+
+        try:
+            with open(self.client_id_file) as f:
+                json.loads(f.read())
+        except ValueError as e:
+            raise RuntimeError("Client ID file %s is not valid JSON! %s" % repr(e))
 
     def setup(self):
         """

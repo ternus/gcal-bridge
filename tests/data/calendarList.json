@@ -1,0 +1,46 @@
+{
+  "items": [
+    {
+      "kind": "calendar#calendarListEntry",
+      "foregroundColor": "#000000",
+      "defaultReminders": [],
+      "colorId": "6",
+      "selected": true,
+      "summary": "Conf-Test-1",
+      "etag": "\"1470693838685000\"",
+      "backgroundColor": "#ffad46",
+      "timeZone": "America/Los_Angeles",
+      "accessRole": "owner",
+      "id": "foo.com_1@resource.calendar.google.com"
+    },
+    {
+      "kind": "calendar#calendarListEntry",
+      "foregroundColor": "#000000",
+      "defaultReminders": [],
+      "colorId": "7",
+      "selected": true,
+      "summary": "Conf-Test-2",
+      "etag": "\"1470454041081000\"",
+      "backgroundColor": "#42d692",
+      "timeZone": "America/Los_Angeles",
+      "accessRole": "owner",
+      "id": "foo.com_2@resource.calendar.google.com"
+    },
+    {
+      "kind": "calendar#calendarListEntry",
+      "foregroundColor": "#000000",
+      "defaultReminders": [],
+      "colorId": "9",
+      "selected": true,
+      "summary": "Conf-Test-3",
+      "etag": "\"1470528580073000\"",
+      "backgroundColor": "#7bd148",
+      "timeZone": "America/Los_Angeles",
+      "accessRole": "reader",
+      "id": "foo.com_3@resource.calendar.google.com"
+    }
+  ],
+  "kind": "calendar#calendarList",
+  "etag": "\"p33sapadvtepcs0g\"",
+  "nextSyncToken": "CPisqb_rss4CEhN0ZXJudXNAYWR2ZXJzYXJpLmVz"
+}

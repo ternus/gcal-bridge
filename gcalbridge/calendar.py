@@ -29,7 +29,7 @@ class Calendar:
 
         logging.info("Creating new calendar at %s with url %s" % (self.domain_id, self.url))
 
-        if domains:
+        if domains is not None:
             if not self.domain_id in domains:
                 raise BadConfigError("Domain %s referenced in calendar config not defined." % self.domain_id)
             self.domain = domains[self.domain_id]
@@ -52,8 +52,8 @@ class Calendar:
                 break
 
         if not self.calendar_metadata:
-            logging.critical("Couldn't find calendar %s in domain %s!", self.url, self.domain_id)
-            raise BadConfigError
+            raise BadConfigError("Couldn't find calendar %s in domain %s!" % (self.url, self.domain_id))
+
         # Now that we have metadata, we can use a name instead of a URL
 
         self.name = "%s [%s]" % (self.calendar_metadata['summary'], self.domain_id)
@@ -98,7 +98,7 @@ class Calendar:
         updated = 0
         while request is not None:
             result = request.execute()
-            logging.debug(pformat(result))
+            # print(pformat(result))
             updated += self.update_events_from_result(result)
             request = self.service.events().list_next(request, result)
         self.sync_token = result.get("nextSyncToken", "")

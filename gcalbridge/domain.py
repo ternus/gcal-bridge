@@ -3,6 +3,7 @@
 from httplib2 import Http
 import apiclient.discovery
 import oauth2client
+import json
 import os
 
 import logging
@@ -16,9 +17,10 @@ class Domain:
     credentials necessary to perform operations on it.
     """
 
-    def __init__(self, domain, domain_config, authorize=True, code=None):
+    def __init__(self, domain, domain_config, authorize=True, code=None, http=None):
         self.domain = domain
         self.domain_config = domain_config
+        self.http = http
 
         if not "account" in domain_config:
             raise BadConfigError("Domain %s doesn't have 'account' value set!")
@@ -46,7 +48,7 @@ class Domain:
             else:
                 return None
         try:
-            service = apiclient.discovery.build('calendar', 'v3', credentials=credentials)
+            service = self.get_service(credentials=credentials)
             service.calendarList().list().execute()
             return credentials
         except Exception as e:
@@ -56,7 +58,6 @@ class Domain:
     def obtain_credentials(self, code=None):
         logging.info("Getting credentials for %s" % self.domain)
         credentials = None
-        # http = Http()
         if os.path.isfile(self.get_file_path()):
             logging.info("%s exists, attempting to retrieve credentials", self.get_file_path())
             try:
@@ -89,9 +90,13 @@ class Domain:
             return None
 
     def get_service(self, credentials=None):
-        if not credentials:
-            credentials = self.credentials
-        return apiclient.discovery.build('calendar', 'v3', credentials=credentials)
+        if self.http:
+            # For testing purposes.
+            return apiclient.discovery.build('calendar', 'v3', http=self.http)
+        else:
+            if not credentials:
+                credentials = self.credentials
+            return apiclient.discovery.build('calendar', 'v3', credentials=credentials)
 
     def get_calendars(self):
         return self.get_service().calendarList().list().execute()

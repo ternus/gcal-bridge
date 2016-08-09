@@ -88,5 +88,8 @@ ENV/
 # Rope project settings
 .ropeproject
 
-*keyfile.json
 config.json
+creds_*.json
+*client_id*.json
+*keyfile.json
+fix.sed

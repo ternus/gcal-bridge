@@ -1,0 +1,10 @@
+{
+  "kind": "calendar#events", 
+  "defaultReminders": [], 
+  "items": [], 
+  "updated": "2016-08-08T22:11:26.898Z", 
+  "summary": "Conf-Test-1", 
+  "etag": "\"p338edb4ktepcs0g\"", 
+  "nextSyncToken": "CNDmrJTrss4CENDmrJTrss4CGAY=", 
+  "timeZone": "America/Los_Angeles"
+}

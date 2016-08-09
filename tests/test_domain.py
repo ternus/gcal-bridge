@@ -4,24 +4,18 @@
 
 Unit tests for domain module"""
 
+import gcalbridge
 from gcalbridge import domain, config
 from oauth2client.client import FlowExchangeError
 import unittest
 import sys
 from StringIO import StringIO
 from testfixtures import LogCapture
+from .utils import get_default_config
 
 class DomainTest(unittest.TestCase):
     def setUp(self):
-        self.conf = config.Config("config.json.example")
-        self.conf.domains = {
-            "foo.com": {
-                "account": "foo@foo.com"
-            },
-            "bar.com": {
-                "account": "bar@bar.com"
-            }
-        }
+        self.conf = get_default_config()
         self.old_stdout = sys.stdout
         self.old_stdin = sys.stdin
         sys.stdin = StringIO()
@@ -36,14 +30,14 @@ class DomainTest(unittest.TestCase):
         self.assertEqual(d.domain, "foo.com")
         self.assertEqual(d.domain_config['account'], "foo@foo.com")
 
-    # def test_creds_no_code(self):
-    #     with LogCapture() as l:
-    #         with self.assertRaises(FlowExchangeError):
-    #             d = domain.Domain("foo.com", self.conf.domains['foo.com'],
-    #                         authorize=True, code="")
-    #
-    # def test_creds_bad_code(self):
-    #     with LogCapture() as l:
-    #         with self.assertRaises(FlowExchangeError):
-    #             d = domain.Domain("foo.com", self.conf.domains['foo.com'],
-    #                         authorize=True, code="bad code")
+    def test_creds_no_code(self):
+        with LogCapture() as l:
+            with self.assertRaises(FlowExchangeError):
+                d = domain.Domain("foo.com", self.conf.domains['foo.com'],
+                            authorize=True, code="")
+
+    def test_creds_bad_code(self):
+        with LogCapture() as l:
+            with self.assertRaises(FlowExchangeError):
+                d = domain.Domain("foo.com", self.conf.domains['foo.com'],
+                            authorize=True, code="bad code")

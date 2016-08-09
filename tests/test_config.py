@@ -11,11 +11,12 @@ from gcalbridge.errors import BadConfigError
 import tempfile
 import os
 from copy import deepcopy
+from .utils import datafile
 import json
 
 class ConfigTests(unittest.TestCase):
     def setUp(self):
-        self.config_file = "config.json.example"
+        self.config_file = datafile("config-test.json")
         self.fake_config_file, self.fake_config_name = tempfile.mkstemp()
         self.fake_config_file = os.fdopen(self.fake_config_file, 'w')
 
@@ -44,3 +45,11 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(BadConfigError):
                 config.Config(self.fake_config_name)
             self.setUp()
+
+    def test_config_missing_keyfile(self):
+        conf = json.loads(open(self.config_file).read())
+        conf['client_id_file'] = 'missing'
+        self.fake_config_file.write(json.dumps(conf))
+        self.fake_config_file.flush()
+        with self.assertRaises(RuntimeError):
+            config.Config(self.fake_config_name)
