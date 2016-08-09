@@ -12,6 +12,7 @@ from testfixtures import LogCapture
 
 class CalendarTest(unittest.TestCase):
     def setUp(self):
+        build('calendar', 'v3')
         self.conf = get_default_config()
         self.domain = gcalbridge.domain.Domain(
             "foo.com",

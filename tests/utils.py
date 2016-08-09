@@ -7,6 +7,9 @@ from gcalbridge import config
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
+import logging
+logging.basicConfig()
+
 def datafile(name):
     return os.path.join(DATA_DIR, name)
 
