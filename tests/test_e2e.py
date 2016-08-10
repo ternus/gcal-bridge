@@ -73,14 +73,16 @@ class EndToEndTest(unittest.TestCase):
                     if not e.active(): continue
                     self.assertEqual(cmp(e, other_c.events[eid]), 0)
 
-        c.service.events().patch(calendarId=c.url,eventId=new_event['id'],
-                                 body={"location": "NewAutoTestLoc"}).execute()
-        self.cal.sync()
-        for c in self._cals:
-            self.assertEqual(len(c.events), ec[c.url] + 1)
-            e = c.events[new_event['id']]
-            self.assertIsInstance(e, gcalbridge.calendar.Event)
-            self.assertEqual(e['location'], "NewAutoTestLoc")
+        for field in ["summary", "description", "location"]:
+            k = str(randint(1,10000000000))
+            c.service.events().patch(calendarId=c.url,eventId=new_event['id'],
+                                     body={field: k}).execute()
+            self.cal.sync()
+            for c in self._cals:
+                self.assertEqual(len(c.events), ec[c.url] + 1)
+                e = c.events[new_event['id']]
+                self.assertIsInstance(e, gcalbridge.calendar.Event)
+                self.assertEqual(e[field], k)
 
         c.service.events().patch(calendarId=c.url,eventId=new_event['id'],
                                  body={"status": "cancelled"}).execute()
@@ -91,3 +93,63 @@ class EndToEndTest(unittest.TestCase):
             self.assertIsInstance(e, gcalbridge.calendar.Event)
             self.assertEqual(e['status'], "cancelled")
             self.assertFalse(e.active())
+
+    def test_propagate_invite(self):
+        svc = self._cals[0].service.events()
+
+        new_event = svc.insert(calendarId="primary",
+                   body={
+                        'summary': "test invite propagate event",
+                        'start': {
+                            'dateTime': (datetime.datetime.now() +
+                                         datetime.timedelta(hours=1)).isoformat(),
+                            'timeZone': 'America/New_York'
+                        },
+                        'end': {
+                            'dateTime': (datetime.datetime.now() +
+                                         datetime.timedelta(hours=2)).isoformat(),
+                            'timeZone': 'America/New_York'
+                        },
+                        'attendees': [
+                            {
+                                'email': self._cals[0].url,
+                                'resource': True
+                            }
+                        ]
+                   }).execute()
+
+        self.assertIn('summary', new_event)
+        self.assertEqual(new_event['summary'], "test invite propagate event")
+        self.created_events.append((self._cals[0].service, self._cals[0].url,
+                                    new_event))
+
+        self.cal.sync()
+
+        for c in self._cals:
+            e = c.events.get(new_event['id'], None)
+            self.assertIsNotNone(e)
+            # self.assertGreater([a for a in e['attendees']])
+
+        patched = svc.patch(calendarId="primary", eventId=new_event['id'],
+                body={
+                    'start': {
+                        'dateTime': (datetime.datetime.now() +
+                                     datetime.timedelta(hours=2)).isoformat(),
+                        'timeZone': 'America/New_York'
+                    },
+                    'end': {
+                        'dateTime': (datetime.datetime.now() +
+                                     datetime.timedelta(hours=3)).isoformat(),
+                        'timeZone': 'America/New_York'
+                    },
+
+                }).execute()
+
+        self.cal.sync()
+
+        for c in self._cals:
+            e = c.events.get(new_event['id'], None)
+            self.assertIsNotNone(e)
+            self.assertEqual(patched['id'], e['id'])
+            # self.assertEqual(e['start'], patched['start'])
+            # self.assertEqual(e['end'], patched['end'])
