@@ -5,7 +5,7 @@ import os
 import datetime
 import time
 
-from random import randint
+from random import randint, choice
 from apiclient.errors import HttpError
 
 import gcalbridge
@@ -27,10 +27,13 @@ class EndToEndTest(unittest.TestCase):
         for cal in cals.values():
             cal.sync()
             for c in cal.calendars:
-                for e in c.events.values():
-                    if e.active():
-                        e['status'] = 'cancelled'
-                c.push_events()
+                for id in c.active_events():
+                    c.events[id]['status'] = 'cancelled'
+                c.push_events(batch=True)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.setUpClass()
 
     def setUp(self):
         self.calendars = EndToEndTest.config.setup()
@@ -97,12 +100,23 @@ class EndToEndTest(unittest.TestCase):
             for t in tests.keys():
                 self.assertEqual(e[t], tests[t])
 
+    def assertHasSameEvents(self, cals=None):
+        if cals is None: cals = self._cals
+        s = set(cals[0].active_events())
+        for c in cals[1:]:
+            self.assertEqual(s, set(c.active_events()))
+
+    def sync_and_check(self, expected_sync_val=0, cal=None):
+        if cal is None: cal = self.cal
+        self.assertGreaterEqual(cal.sync(), expected_sync_val)
+        self.assertHasSameEvents(cals=cal.calendars)
+
     def test_e2e_working(self):
         for c in self._cals:
             self.assertIsInstance(c, gcalbridge.calendar.Calendar)
             self.assertIsInstance(c.domain, gcalbridge.domain.Domain)
             # self.assertEqual(len(c.events), 0)
-        self.cal.sync()
+        self.sync_and_check()
         for c in self._cals:
             self.assertGreater(len(c.events), 0)
             for e in c.events.itervalues():
@@ -123,21 +137,23 @@ class EndToEndTest(unittest.TestCase):
             .execute())
         self.created_events.append((c.service, c.url, new_event))
         self.assertEqual(new_event['status'], "confirmed")
-        self.cal.sync()
-        for c in self._cals:
-            self.assertEqual(len(c.events), ec[c.url] + 1)
-            for other_c in self._cals:
-                for (eid, e) in c.events.iteritems():
-                    self.assertIsInstance(e, gcalbridge.calendar.Event)
-                    if not e.active():
-                        continue
-                    self.assertEqual(cmp(e, other_c.events[eid]), 0)
+
+        self.sync_and_check(1)
+
+        # for c in self._cals:
+        #     self.assertEqual(len(c.events), ec[c.url] + 1)
+        #     for other_c in self._cals:
+        #         for (eid, e) in c.events.iteritems():
+        #             self.assertIsInstance(e, gcalbridge.calendar.Event)
+        #             if not e.active():
+        #                 continue
+        #             self.assertEqual(cmp(e, other_c.events[eid]), 0)
 
         for field in ["summary", "description", "location"]:
             k = str(randint(1, 10000000000))
             c.service.events().patch(calendarId=c.url, eventId=new_event['id'],
                                      body={field: k}).execute()
-            self.cal.sync()
+            self.sync_and_check(1)
             for c in self._cals:
                 self.assertEqual(len(c.events), ec[c.url] + 1)
                 e = c.events[new_event['id']]
@@ -146,7 +162,7 @@ class EndToEndTest(unittest.TestCase):
 
         c.service.events().patch(calendarId=c.url, eventId=new_event['id'],
                                  body={"status": "cancelled"}).execute()
-        self.cal.sync()
+        self.sync_and_check(1)
         for c in self._cals:
             self.assertEqual(len(c.events), ec[c.url] + 1)
             e = c.events[new_event['id']]
@@ -155,14 +171,51 @@ class EndToEndTest(unittest.TestCase):
             self.assertFalse(e.active())
 
     def test_double_sync(self):
-        before = self.cal.sync()
-        after = self.cal.sync()
-        self.assertEqual(after, 0)
+        self.sync_and_check()
+        self.sync_and_check()
+
+    def test_create_lots_of_events(self):
+        for c in self._cals:
+            c._batch = c.service.new_batch_http_request()
+        for i in range(100):
+            c = choice(self._cals)
+            c._batch.add(c.service.events().insert(calendarId=c.url,
+                                                 body=self.random_event()
+                                                 ))
+        for c in self._cals:
+            c._batch.execute()
+
+        self.sync_and_check(99)
+
+        eids = self._cals[0].active_events()
+
+        for id in eids:
+            self.assertEvent(id, tests={
+                'status': 'confirmed'
+            })
+            choice(self._cals).events[id]['status'] = 'cancelled'
+
+
+        for c in self._cals:
+            c.push_events(batch=True)
+
+        self.sync_and_check(99)
+
+        for id in eids:
+            # logging.debug("%s %s", id, self._cals[0].events[id]['status'])
+            self.assertEvent(id, tests={
+                'status': 'cancelled'
+            })
+
 
     def test_propagate_invite(self):
         cal = self._cals[0]
         svc = cal.service.events()
         tag = self.tag()
+
+        # Create a new event on the **primary** calendar,
+        # which isn't synced.
+
         new_event = svc.insert(calendarId="primary",
                    body=self.random_event(tag=tag)).execute()
 
@@ -171,24 +224,31 @@ class EndToEndTest(unittest.TestCase):
         self.created_events.append((cal.service, "primary",
                                     new_event))
 
-        self.cal.sync()
+        self.sync_and_check()
+
+        # Check that the event didn't appear in any of our calendars.
 
         for c in self._cals:
             e = c.events.get(new_event['id'], None)
             self.assertIsNone(e)
 
-        patched = svc.patch(calendarId="primary", eventId=new_event['id'],
+        # Invite the resource to the event.
+
+        new_event = svc.patch(calendarId="primary", eventId=new_event['id'],
                             body={'attendees': [
                  {
                      'email': cal.url,
                      'resource': True
                  }]}).execute()
-
         self.wait_for_backend(cal)
 
-        self.assertGreater(self.cal.sync(), 0)
+        # Make sure we got at least one update and the event is on all
+        # calendars.
 
+        self.sync_and_check(1)
         self.assertEvent(new_event['id'])
+
+        # Change the time.
 
         patched = svc.patch(calendarId="primary", eventId=new_event['id'],
                 body={
@@ -206,19 +266,25 @@ class EndToEndTest(unittest.TestCase):
                 }).execute()
         self.wait_for_backend(cal)
 
-        self.assertGreater(self.cal.sync(), 0)
+        # Sync and check the event time changed.
 
+        self.sync_and_check(1)
         self.assertEqual(patched['id'], new_event['id'])
-
         self.assertEvent(patched['id'])
+
+        # Cancel the event on the primary calendar.
 
         svc.patch(calendarId="primary", eventId=new_event['id'],
                              body={"status": "cancelled"}).execute()
-        self.wait_for_backend(cal)  #  give the backend a second to catch up
-        self.cal.sync()
+        self.wait_for_backend(cal)
 
-        for c in self._cals:
-            e = c.events.get(new_event['id'], None)
-            # logging.debug(pformat(e))
-            self.assertIsNotNone(e)
-            self.assertEqual(e['status'], 'cancelled')
+        # Sync and check that all events got cancelled.
+
+        self.sync_and_check(1)
+        self.assertEvent(new_event['id'], tests={
+                    'status': 'cancelled'
+        })
+        # for c in self._cals:
+        #     e = c.events.get(new_event['id'], None)
+        #     self.assertIsNotNone(e)
+        #     self.assertEqual(e['status'], 'cancelled')

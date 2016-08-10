@@ -149,6 +149,9 @@ class Calendar:
             return ["owner", "writer", "reader"]
         return ["owner", "writer"]
 
+    def active_events(self):
+        return {k:v for k,v in self.events.iteritems() if v.active()}
+
     def update_events_from_result(self, result, exception=None):
         """
         Given an Events resource result, update our local events.
@@ -316,11 +319,12 @@ class Calendar:
                                              body=new_event)
         return self._process_action(action)
 
-    def push_events(self):
+    def push_events(self, batch=False):
         """
         If we have local modifications to events, push them
         to the server.
         """
+        if batch: self.begin_batch()
         updates = 0
         for eid, e in self.events.iteritems():
             if e.dirty:
@@ -328,6 +332,7 @@ class Calendar:
                 self.update_event(eid, e)
                 e.dirty = False
                 updates += 1
+        if batch: self.commit_batch()
         return updates
 
 
