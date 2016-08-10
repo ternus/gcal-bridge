@@ -73,7 +73,8 @@ class Event(dict):
         for p in self.props:
             d[p] = self.get(p, None)
         for p in self.special_props:
-            d[p] = sorted([a['email'] for a in self[p] if p in self])
+            if p in self:
+                d[p] = sorted([a['email'] for a in self[p]])
         return hash(json.dumps(d))
 
 
@@ -238,22 +239,19 @@ class Calendar:
             my_event = self.events[eid]
             if my_event['status'] == 'cancelled' and event['status'] == 'cancelled':
                 my_event = event
-                return
+                return None
             if my_event < event:
                 # logging.debug(pformat(self.events[eid]))
                 # logging.debug(pformat(event))
-                self.update_event(eid, event)
-            # else:
-            #     logging.debug("%s %d >= %s %d [%d]", my_event['summary'], my_event['sequence'],
-            #                   event['summary'], event['sequence'], cmp(my_event, event))
+                return self.update_event(eid, event)
         else:
+            self.events[eid] = event
             if event['status'] == 'cancelled':
                 # If the event is both new to us and cancelled, there's no need
                 # to add it (and Google doesn't let us do so for resources
                 # anyway) so just add it to our event set and return.
-                self.events[eid] = event
-                return
-            self.add_event(event)
+                return None
+            return self.add_event(event)
 
     def _process_action(self, action):
         """
@@ -274,7 +272,7 @@ class Calendar:
         """
         if self.read_only:
             logging.debug("RO: %s +> %s" % (event['id'], self.name))
-            return
+            return None
         action = self.service.events().insert(calendarId=self.url, body=event)
         return self._process_action(action)
 
@@ -285,7 +283,7 @@ class Calendar:
         """
         if self.read_only:
             logging.debug("RO: %s => %s" % (event['id'], self.name))
-            return
+            return None
         action = self.service.events().patch(calendarId=self.url,
                                              eventId=event_id,
                                              body=new_event)
@@ -298,7 +296,7 @@ class Calendar:
         """
         if self.read_only:
             logging.debug("RO: %s ~> %s" % (event['id'], self.name))
-            return
+            return None
         # new_event['sequence'] += 1
         action = self.service.events().update(calendarId=self.url,
                                              eventId=event_id,
@@ -324,19 +322,17 @@ class SyncedCalendar:
         Find the most up-to-date version of a given event, and sync changes
         that need to be made.
         """
-        result = None
         events = [c.events[id] for c in self.calendars if id in c.events]
         if not [e for e in events if e.active()]:
             # All events cancelled. We don't care.
-            return
+            return 0
         event = max(events)  # See __cmp__ in Event for how this is determined.
         sequence = max([e['sequence'] for e in events])
         if sequence > event['sequence']:
             # you get an update! you get an update! everyone gets an update!
             event['sequence'] = sequence + 1
             logging.debug("increasing SN of %.5s to %d", id, event['sequence'])
-        for c in self.calendars:
-            c.sync_event(event)
+        return sum([c.sync_event(event) is not None for c in self.calendars])
 
     def print_debug_events(self):
         for e in self.event_set:
@@ -354,14 +350,16 @@ class SyncedCalendar:
         add or update that event as needed.
         """
 
-        for cal in self.calendars:
-            logging.info("Updating calendar: %s" % cal.url)
-            # First, get the latest set of events from Google.
-            cal.update_events()
-            # Start a batch on this calendar.
-            #cal.begin_batch()
-            # Update our set of event IDs.
-            self.event_set.update(cal.events.keys())
+        remaining = True
+        while remaining:
 
-        for eid in self.event_set:
-            self.sync_event(eid)
+            for cal in self.calendars:
+                logging.info("Updating calendar: %s" % cal.url)
+                # First, get the latest set of events from Google.
+                remaining = cal.update_events()
+                # Start a batch on this calendar.
+                #cal.begin_batch()
+                # Update our set of event IDs.
+                self.event_set.update(cal.events.keys())
+
+            remaining += sum([self.sync_event(eid) for eid in self.event_set])
