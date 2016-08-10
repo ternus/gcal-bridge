@@ -1,5 +1,5 @@
 oauth2client
 httplib2
-google-api-python-client==1.5.1
+google-api-python-client
 nose2
 testfixtures
