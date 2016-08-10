@@ -23,20 +23,25 @@ class EndToEndTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.config = gcalbridge.Config(datafile('config_e2e.json'))
+
+    @classmethod
+    def tearDownClass(cls):
         cals = cls.config.setup()
         for cal in cals.values():
+            for cc in cal.calendars:
+                cc._show_deleted = True
             cal.sync()
             for c in cal.calendars:
                 for id in c.active_events():
                     c.events[id]['status'] = 'cancelled'
                 c.push_events(batch=True)
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.setUpClass()
 
     def setUp(self):
-        self.calendars = EndToEndTest.config.setup()
+        self.calendars = gcalbridge.Config(datafile('config_e2e.json')).setup()
+        for c in self.calendars.values():
+            for cc in c.calendars:
+                cc._show_deleted = True
         self.config = EndToEndTest.config
         self.cal = list(self.calendars.values())[0]
         self.created_events = []
@@ -166,10 +171,17 @@ class EndToEndTest(unittest.TestCase):
             self.assertFalse(e.active())
 
     def test_double_sync(self):
+        """
+        Make sure syncing with no intermediate changes is idempotent.
+        """
         self.sync_and_check()
         self.sync_and_check(mx=0)
 
     def test_create_lots_of_events(self):
+        """
+        Create 100 random events distributed between calendars, sync, and
+        cancel them.
+        """
         for c in self._cals:
             c._batch = c.service.new_batch_http_request()
         for i in range(100):
@@ -204,6 +216,10 @@ class EndToEndTest(unittest.TestCase):
 
 
     def test_propagate_invite(self):
+        """
+        Create an event on the primary calendar, invite a resource
+        to it, then ensure the invite propagates properly across domains.
+        """
         cal = self._cals[0]
         svc = cal.service.events()
         tag = self.tag()
@@ -279,3 +295,14 @@ class EndToEndTest(unittest.TestCase):
         self.assertEvent(new_event['id'], tests={
                     'status': 'cancelled'
         })
+
+    def test_read_only(self):
+        ro_cal = self._cals[0]
+        ro_cal.read_only = True
+        rw_cal = self._cals[1]
+        self.sync_and_check()
+
+        rw_cal.service.events().insert(calendarId=rw_cal.url,
+                                       body=self.random_event()).execute()
+
+        self.sync_and_check()

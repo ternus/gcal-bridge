@@ -52,7 +52,7 @@ class Event(dict):
         'identical' (even if they were updated at different times). Otherwise,
         the most recently updated copy wins.
         """
-        if not obj:
+        if not obj or not isinstance(obj, Event):
             return 1
         elif self.ehash() == obj.ehash():
             return 0
