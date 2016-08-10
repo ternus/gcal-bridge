@@ -53,20 +53,14 @@ class Event(dict):
         """
         if not obj:
             return 1
-        if self.ehash() == obj.ehash():
+        elif self.ehash() == obj.ehash():
             return 0
-        elif self.active() and obj.active():
+        else:
             for p in self.props:
                 if p in self and p in obj:
                     if self[p] != obj[p]:
                         logging.debug("!!!!!==== %s %s %s", p, self[p], obj[p])
-            if self['updated'] < obj['updated']:
-                return -1
-        else:
-            # Since we can't un-cancel events (thanks, Google), any
-            # cancellation wins.
-            return 1 if obj.active() else -1
-        return 1
+            return cmp(self['updated'], obj['updated'])
 
     def __setitem__(self, k, v):
         self.dirty = True
@@ -103,11 +97,14 @@ class Calendar:
         if 'read_only' in config:
             self.read_only = config['read_only']
 
-        logging.info("Creating new calendar at %s with url %s" % (self.domain_id, self.url))
+        logging.info("Creating new calendar at %s with url %s" % (self.
+            domain_id, self.url))
 
         if domains is not None:
             if not self.domain_id in domains:
-                raise BadConfigError("Domain %s referenced in calendar config not defined." % self.domain_id)
+                raise BadConfigError(
+                    "Domain %s referenced in calendar config not defined." %
+                    self.domain_id)
             self.domain = domains[self.domain_id]
             self.service = self.domain.get_service()
 
@@ -119,7 +116,8 @@ class Calendar:
         try:
             calendars = self.domain.get_calendars()
         except HttpError as e:
-            logging.critical("Error while trying to load calendar %s: %s", self.url, repr(e))
+            logging.critical("Error while trying to load calendar %s: %s",
+                self.url, repr(e))
             raise e
 
         for c in calendars.get('items', []):
@@ -128,16 +126,18 @@ class Calendar:
                 break
 
         if not self.calendar_metadata:
-            raise BadConfigError("Couldn't find calendar %s in domain %s!" % (self.url, self.domain_id))
+            raise BadConfigError("Couldn't find calendar %s in domain %s!" % (
+                self.url, self.domain_id))
         # Now that we have metadata, we can use a name instead of a URL
 
-        self.name = "%s [%s]" % (self.calendar_metadata['summary'], self.domain_id)
+        self.name = "%s [%s]" % (self.calendar_metadata['summary'], self.
+            domain_id)
 
-        if self.calendar_metadata['accessRole'] not in self.valid_access_roles():
-            logging.critical("Permission '%s' on calendar %s is too restrictive! Needed %s",
-                             self.calendar_metadata['accessRole'],
-                             self.url,
-                             self.valid_access_roles())
+        if (self.calendar_metadata['accessRole'] not in self.valid_access_roles()):
+            logging.critical(
+                "Permission '%s' on calendar %s is too restrictive! Needed %s",
+                self.calendar_metadata['accessRole'], self.url, self.
+                valid_access_roles())
             raise RuntimeError
 
     def valid_access_roles(self):
@@ -153,7 +153,8 @@ class Calendar:
         Given an Events resource result, update our local events.
         """
         if exception is not None:
-            logging.warn("Callback indicated failure -- exception: %s", exception)
+            logging.warn("Callback indicated failure -- exception: %s",
+                exception)
             logging.debug(pformat(result))
             logging.debug(pformat(exception))
             return 0
@@ -186,7 +187,8 @@ class Calendar:
             updated += self.update_events_from_result(result)
             request = self.service.events().list_next(request, result)
         self.sync_token = result.get("nextSyncToken", "")
-        # logging.info("Got %d events. syncToken is now %s" % (updated, self.sync_token))
+        # logging.info("Got %d events. syncToken is now %s" % (updated,
+        # self.sync_token))
         return updated
 
     def begin_batch(self):
@@ -195,7 +197,8 @@ class Calendar:
         """
         logging.debug("Calendar %s starting new batch" % self.url)
         if self.batch:
-            logging.warn("begin_batch called with active batch! Trying to commit")
+            logging.warn(
+                "begin_batch called with active batch! Trying to commit")
             self.commit_batch()
         self.batch = self.service.new_batch_http_request()
 
@@ -208,7 +211,8 @@ class Calendar:
             return
         if self.batch_count:
             # Only commit a batch when necessary, to save on HTTP requests.
-            logging.debug("Calendar %s committing batch of %d" % (self.url, self.batch_count))
+            logging.debug("Calendar %s committing batch of %d" % (self.url,
+                self.batch_count))
             result = self.batch.execute()
             #self.update_events_from_result(result)
             # logging.debug(pformat(result))
@@ -221,14 +225,16 @@ class Calendar:
         than MAX_ACTIONS_PER_BATCH actions, commit it and start a new one.
         """
         if self.batch:
-            self.batch.add(action, callback=lambda request_id, response, exception:
-                           self.update_events_from_result(response, exception=exception))
+            self.batch.add(action, callback=lambda request_id, response,
+                exception: self.update_events_from_result(response,
+                exception=exception))
             self.batch_count += 1
             if self.batch_count > MAX_ACTIONS_PER_BATCH:
                 self.commit_batch()
                 self.begin_batch()
         else:
-            logging.critical("Tried to add a batch action but no batch was active!")
+            logging.critical(
+                "Tried to add a batch action but no batch was active!")
             raise RuntimeError
 
     def sync_event(self, event):
@@ -241,7 +247,8 @@ class Calendar:
         eid = event['id']
         if eid in self.events:
             my_event = self.events[eid]
-            if my_event['status'] == 'cancelled' and event['status'] == 'cancelled':
+            if (my_event['status'] == 'cancelled' and event['status'] ==
+                'cancelled'):
                 my_event = event
                 return None
             if my_event < event:
@@ -280,17 +287,6 @@ class Calendar:
             return None
         action = self.service.events().insert(calendarId=self.url, body=event)
         return self._process_action(action)
-    # def import_event(self, event):
-    #     if self.read_only:
-    #         logging.debug("RO: %s >> %s" % (event['id'], self.name))
-    #         return None
-    #     event.pop('organizer')
-    #     if not 'attendees' in event:
-    #         event['attendees'] = [{'email': self.url}]
-    #     elif not [a for a in event['attendees'] if a['email'] == self.url]:
-    #         event['attendees'].append({'email': self.url})
-    #     action = self.service.events().import_(calendarId=self.url, body=event)
-    #     return self._process_action(action)
 
     def patch_event(self, event_id, new_event):
         """
@@ -328,7 +324,7 @@ class Calendar:
         for eid, e in self.events.iteritems():
             if e.dirty:
                 logging.debug("Pushing dirty event %s", eid)
-                update_event(eid, e)
+                self.update_event(eid, e)
                 e.dirty = False
                 updates += 1
         return updates
@@ -356,6 +352,10 @@ class SyncedCalendar:
         if not [e for e in events if e.active()]:
             # All events cancelled. We don't care.
             return 0
+        elif [e for e in events if not e.active()]:
+            # One or more events cancelled. All events should be cancelled.
+            for e in events:
+                e['status'] = 'cancelled'
         event = max(events)  # See __cmp__ in Event for how this is determined.
         sequence = max([e['sequence'] for e in events])
         if sequence > event['sequence']:
@@ -369,7 +369,9 @@ class SyncedCalendar:
             print(("%.5s" % e), end=' ')
             for c in self.calendars:
                 if e in c.events:
-                    print(" %-4d %20.20s %25.25s" % (c.events[e]['sequence'], c.events[e]['summary'], c.events[e]['updated']), end=' ')
+                    print(" %-4d %20.20s %25.25s" % (c.events[e]['sequence'],
+                        c.events[e]['summary'], c.events[e]['updated']),
+                        end=' ')
                 else:
                     print(" " * 32, end=' ')
             print()
@@ -381,8 +383,8 @@ class SyncedCalendar:
         """
 
         remaining = True
-        while remaining:
 
+        while remaining:
             for cal in self.calendars:
                 logging.info("Updating calendar: %s" % cal.url)
                 # First, get the latest set of events from Google.

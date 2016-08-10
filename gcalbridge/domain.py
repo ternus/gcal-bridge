@@ -17,7 +17,8 @@ class Domain:
     credentials necessary to perform operations on it.
     """
 
-    def __init__(self, domain, domain_config, authorize=True, code=None, http=None):
+    def __init__(self, domain, domain_config, authorize=True, code=None,
+        http=None):
         self.domain = domain
         self.domain_config = domain_config
         self.http = http
@@ -32,8 +33,9 @@ class Domain:
             try:
                 self.credentials = self.obtain_credentials(code=code)
             except Exception as e:
-                logging.critical("Failed to obtain credentials for account %s [%s]",
-                                 self.account, repr(e))
+                logging.critical(
+                    "Failed to obtain credentials for account %s [%s]", self.
+                    account, repr(e))
                 raise e
 
     def get_file_path(self):
@@ -60,9 +62,11 @@ class Domain:
         logging.info("Getting credentials for %s" % self.domain)
         credentials = None
         if os.path.isfile(self.get_file_path()):
-            logging.info("%s exists, attempting to retrieve credentials", self.get_file_path())
+            logging.info("%s exists, attempting to retrieve credentials", self
+                .get_file_path())
             try:
-                credentials = oauth2client.file.Storage(self.get_file_path()).get()
+                credentials = (oauth2client.file.Storage(self.get_file_path()).
+                    get())
                 return self.check_credentials(credentials)
             except Exception as e:
                 logging.error(repr(e))
@@ -83,7 +87,8 @@ class Domain:
             try:
                 credentials = flow.step2_exchange(code)
                 if self.check_credentials(credentials):
-                    oauth2client.file.Storage(self.get_file_path()).put(credentials)
+                    oauth2client.file.Storage(self.get_file_path()).put(
+                        credentials)
                     return credentials
             except Exception as e:
                 logging.error(repr(e))
@@ -97,9 +102,11 @@ class Domain:
         else:
             if not credentials:
                 credentials = self.credentials
-            return apiclient.discovery.build('calendar', 'v3', credentials=credentials)
+            return apiclient.discovery.build('calendar', 'v3',
+                credentials=credentials)
 
     def get_calendars(self):
         if self.calendar_metadata is None:
-            self.calendar_metadata = self.get_service().calendarList().list().execute()
+            self.calendar_metadata = (self.get_service().calendarList().list().
+                execute())
         return self.calendar_metadata

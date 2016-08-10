@@ -26,12 +26,10 @@ class Config:
         "calendars": []
     }
 
-    config_needed = {
-        "scopes": "One or more scopes - see https://developers.google.com/identity/protocols/googlescopes",
-        "client_id_file": "Path to a client ID json file",
-        "poll_time": "Time to wait while polling",
-        "max_exceptions": "Number of exceptions to encounter before exiting"
-    }
+    config_needed = {"scopes": "One or more scopes - see https://developers.google.com/identity/protocols/googlescopes",
+        "client_id_file": "Path to a client ID json file", "poll_time":
+        "Time to wait while polling", "max_exceptions":
+        "Number of exceptions to encounter before exiting"}
 
     def __init__(self, filename="config.json"):
 
@@ -51,13 +49,15 @@ class Config:
         # Ensure our Client ID file exists, is readable, is valid JSON
 
         if not os.path.isfile(self.client_id_file):
-            raise RuntimeError("Client ID file %s not found." % self.client_id_file)
+            raise RuntimeError("Client ID file %s not found." % self.
+                client_id_file)
 
         try:
             with open(self.client_id_file) as f:
                 json.loads(f.read())
         except ValueError as e:
-            raise RuntimeError("Client ID file %s is not valid JSON! %s" % repr(e))
+            raise RuntimeError("Client ID file %s is not valid JSON! %s" %
+                repr(e))
 
     def setup(self):
         """
