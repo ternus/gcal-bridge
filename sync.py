@@ -36,6 +36,7 @@ def main():
                 logging.error(repr(e))
                 if exception_count >= config.max_exceptions:
                     break
+        logging.debug("---------- %d %d", config.poll_time, exception_count)
         time.sleep(config.poll_time * 2 ** exception_count)
 
 if __name__ == '__main__':

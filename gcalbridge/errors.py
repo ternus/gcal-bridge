@@ -3,5 +3,6 @@
 """ Defines specific gcalbridge-related errors. 
 """
 
+
 class BadConfigError(RuntimeError):
     pass

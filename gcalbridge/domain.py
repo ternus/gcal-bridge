@@ -21,6 +21,7 @@ class Domain:
         self.domain = domain
         self.domain_config = domain_config
         self.http = http
+        self.calendar_metadata = None
 
         if not "account" in domain_config:
             raise BadConfigError("Domain %s doesn't have 'account' value set!")
@@ -99,4 +100,6 @@ class Domain:
             return apiclient.discovery.build('calendar', 'v3', credentials=credentials)
 
     def get_calendars(self):
-        return self.get_service().calendarList().list().execute()
+        if self.calendar_metadata is None:
+            self.calendar_metadata = self.get_service().calendarList().list().execute()
+        return self.calendar_metadata

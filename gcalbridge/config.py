@@ -9,7 +9,6 @@ import os.path
 import logging
 from pprint import pformat
 
-
 from .domain import Domain
 from .calendar import SyncedCalendar
 from .errors import BadConfigError
