@@ -89,6 +89,8 @@ ENV/
 .ropeproject
 
 config.json
+config_e2e.json
+e2e_secrets.tar
 creds_*.json
 *client_id*.json
 *keyfile.json
