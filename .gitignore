@@ -95,3 +95,4 @@ creds_*.json
 *client_id*.json
 *keyfile.json
 fix.sed
+*.bak

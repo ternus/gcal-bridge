@@ -13,6 +13,7 @@ from StringIO import StringIO
 from testfixtures import LogCapture
 from .utils import get_default_config
 
+
 class DomainTest(unittest.TestCase):
     def setUp(self):
         self.conf = get_default_config()
@@ -26,7 +27,8 @@ class DomainTest(unittest.TestCase):
         sys.stdout = self.old_stdout
 
     def test_basic_domain(self):
-        d = domain.Domain("foo.com", self.conf.domains['foo.com'], authorize=False)
+        d = domain.Domain("foo.com", self.conf.domains['foo.com'],
+            authorize=False)
         self.assertEqual(d.domain, "foo.com")
         self.assertEqual(d.domain_config['account'], "foo@foo.com")
 

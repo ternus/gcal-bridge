@@ -11,8 +11,10 @@ from apiclient.errors import HttpError
 import gcalbridge
 from utils import *
 import logging
+from pprint import pformat
 
 logging.basicConfig(level=logging.DEBUG)
+
 
 @unittest.skipUnless(os.path.isfile(datafile("client_id.json")),
                      "Only run on a machine with valid secrets.")
@@ -21,14 +23,14 @@ class EndToEndTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.config = gcalbridge.Config(datafile('config_e2e.json'))
-        cals = cls.config.setup()
-        for cal in cals.values():
-            cal.sync()
-            for c in cal.calendars:
-                for e in c.events.values():
-                    if e.active():
-                        e['status'] = 'cancelled'
-                c.push_events()
+        # cals = cls.config.setup()
+        # for cal in cals.values():
+        #     cal.sync()
+        #     for c in cal.calendars:
+        #         for e in c.events.values():
+        #             if e.active():
+        #                 e['status'] = 'cancelled'
+        #         c.push_events()
 
     def setUp(self):
         self.calendars = EndToEndTest.config.setup()
@@ -42,7 +44,8 @@ class EndToEndTest(unittest.TestCase):
                 svc.events().patch(calendarId=cid, eventId=evt['id'], body={
                     'status': 'cancelled'
                 }).execute()
-                # svc.events().delete(calendarId=cid, eventId=evt['id']).execute()
+                # svc.events().delete(calendarId=cid,
+                # eventId=evt['id']).execute()
             except HttpError:
                 pass
         self.cal.sync()
@@ -71,10 +74,10 @@ class EndToEndTest(unittest.TestCase):
         for c in self._cals:
             ec[c.url] = len(c.events)
         c = self._cals[0]
-        key = randint(100000,1000000)
-        new_event = c.service.events().quickAdd(calendarId=c.url,
-                text="Testing %d at AutoTestLoc tomorrow from 10am-10:30am" % key
-                                                ).execute()
+        key = randint(100000, 1000000)
+        new_event = (c.service.events().quickAdd(calendarId=c.url,
+            text="Testing %d at AutoTestLoc tomorrow from 10am-10:30am" % key)
+            .execute())
         self.created_events.append((c.service, c.url, new_event))
         self.assertEqual(new_event['status'], "confirmed")
         self.cal.sync()
@@ -83,12 +86,13 @@ class EndToEndTest(unittest.TestCase):
             for other_c in self._cals:
                 for (eid, e) in c.events.iteritems():
                     self.assertIsInstance(e, gcalbridge.calendar.Event)
-                    if not e.active(): continue
+                    if not e.active():
+                        continue
                     self.assertEqual(cmp(e, other_c.events[eid]), 0)
 
         for field in ["summary", "description", "location"]:
-            k = str(randint(1,10000000000))
-            c.service.events().patch(calendarId=c.url,eventId=new_event['id'],
+            k = str(randint(1, 10000000000))
+            c.service.events().patch(calendarId=c.url, eventId=new_event['id'],
                                      body={field: k}).execute()
             self.cal.sync()
             for c in self._cals:
@@ -97,7 +101,7 @@ class EndToEndTest(unittest.TestCase):
                 self.assertIsInstance(e, gcalbridge.calendar.Event)
                 self.assertEqual(e[field], k)
 
-        c.service.events().patch(calendarId=c.url,eventId=new_event['id'],
+        c.service.events().patch(calendarId=c.url, eventId=new_event['id'],
                                  body={"status": "cancelled"}).execute()
         self.cal.sync()
         for c in self._cals:
@@ -169,12 +173,13 @@ class EndToEndTest(unittest.TestCase):
             # self.assertEqual(e['start'], patched['start'])
             # self.assertEqual(e['end'], patched['end'])
 
-        svc.patch(calendarId="primary",eventId=new_event['id'],
+        svc.patch(calendarId="primary", eventId=new_event['id'],
                              body={"status": "cancelled"}).execute()
-
+        time.sleep(1)  # give the backend a second to catch up
         self.cal.sync()
 
         for c in self._cals:
             e = c.events.get(new_event['id'], None)
+            # logging.debug(pformat(e))
             self.assertIsNotNone(e)
             self.assertEqual(e['status'], 'cancelled')

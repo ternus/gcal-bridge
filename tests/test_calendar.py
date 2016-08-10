@@ -29,7 +29,8 @@ class CalendarTest(unittest.TestCase):
             "domain": "foo.com"
         }
 
-    def tearDown(self): pass
+    def tearDown(self):
+        pass
 
     def test_basic_calendar(self):
         self.domain.http = HttpMock(datafile("calendarList.json"))
@@ -46,9 +47,11 @@ class CalendarTest(unittest.TestCase):
 
     def test_calendar_http_error(self):
         with LogCapture() as l:
-            self.domain.http = HttpMock(datafile("calendarList.json"), {"status": '404'})
+            self.domain.http = HttpMock(datafile("calendarList.json"), {
+                "status": '404'})
             with self.assertRaises(HttpError):
-                c = gcalbridge.calendar.Calendar(self.calendar_conf, self.domains)
+                c = gcalbridge.calendar.Calendar(self.calendar_conf, self.
+                    domains)
 
     def test_calendar_update_events(self):
         self.domain.http = HttpMockSequence([

@@ -4,7 +4,6 @@
 
 Unit tests for config module"""
 
-
 import unittest
 from gcalbridge import config
 from gcalbridge.errors import BadConfigError
@@ -13,6 +12,7 @@ import os
 from copy import deepcopy
 from .utils import datafile
 import json
+
 
 class ConfigTests(unittest.TestCase):
     def setUp(self):
