@@ -55,13 +55,17 @@ class Event(dict):
             return 1
         if self.ehash() == obj.ehash():
             return 0
-        elif self.active():
+        elif self.active() and obj.active():
             for p in self.props:
                 if p in self and p in obj:
                     if self[p] != obj[p]:
                         logging.debug("!!!!!==== %s %s %s", p, self[p], obj[p])
-        if self['updated'] < obj['updated']:
-            return -1
+            if self['updated'] < obj['updated']:
+                return -1
+        else:
+            # Since we can't un-cancel events (thanks, Google), any
+            # cancellation wins.
+            return 1 if obj.active() else -1
         return 1
 
     def __setitem__(self, k, v):
@@ -207,7 +211,7 @@ class Calendar:
             logging.debug("Calendar %s committing batch of %d" % (self.url, self.batch_count))
             result = self.batch.execute()
             #self.update_events_from_result(result)
-        # logging.debug(pformat(result))
+            # logging.debug(pformat(result))
         self.batch = None
         self.batch_count = 0
 
@@ -252,6 +256,7 @@ class Calendar:
                 # anyway) so just add it to our event set and return.
                 return None
             return self.add_event(event)
+            # return self.import_event(event)
 
     def _process_action(self, action):
         """
@@ -275,6 +280,17 @@ class Calendar:
             return None
         action = self.service.events().insert(calendarId=self.url, body=event)
         return self._process_action(action)
+    # def import_event(self, event):
+    #     if self.read_only:
+    #         logging.debug("RO: %s >> %s" % (event['id'], self.name))
+    #         return None
+    #     event.pop('organizer')
+    #     if not 'attendees' in event:
+    #         event['attendees'] = [{'email': self.url}]
+    #     elif not [a for a in event['attendees'] if a['email'] == self.url]:
+    #         event['attendees'].append({'email': self.url})
+    #     action = self.service.events().import_(calendarId=self.url, body=event)
+    #     return self._process_action(action)
 
     def patch_event(self, event_id, new_event):
         """
@@ -302,6 +318,20 @@ class Calendar:
                                              eventId=event_id,
                                              body=new_event)
         return self._process_action(action)
+
+    def push_events(self):
+        """
+        If we have local modifications to events, push them
+        to the server.
+        """
+        updates = 0
+        for eid, e in self.events.iteritems():
+            if e.dirty:
+                logging.debug("Pushing dirty event %s", eid)
+                update_event(eid, e)
+                e.dirty = False
+                updates += 1
+        return updates
 
 
 class SyncedCalendar:
@@ -363,3 +393,6 @@ class SyncedCalendar:
                 self.event_set.update(cal.events.keys())
 
             remaining += sum([self.sync_event(eid) for eid in self.event_set])
+
+            for cal in self.calendars:
+                remaining += cal.push_events()

@@ -21,6 +21,14 @@ class EndToEndTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.config = gcalbridge.Config(datafile('config_e2e.json'))
+        cals = cls.config.setup()
+        for cal in cals.values():
+            cal.sync()
+            for c in cal.calendars:
+                for e in c.events.values():
+                    if e.active():
+                        e['status'] = 'cancelled'
+                c.push_events()
 
     def setUp(self):
         self.calendars = EndToEndTest.config.setup()
@@ -31,9 +39,14 @@ class EndToEndTest(unittest.TestCase):
     def tearDown(self):
         for (svc, cid, evt) in self.created_events:
             try:
-                svc.events().delete(calendarId=cid, eventId=evt['id']).execute()
+                svc.events().patch(calendarId=cid, eventId=evt['id'], body={
+                    'status': 'cancelled'
+                }).execute()
+                # svc.events().delete(calendarId=cid, eventId=evt['id']).execute()
             except HttpError:
                 pass
+        self.cal.sync()
+
     @property
     def _cals(self):
         return self.cal.calendars
@@ -120,7 +133,7 @@ class EndToEndTest(unittest.TestCase):
 
         self.assertIn('summary', new_event)
         self.assertEqual(new_event['summary'], "test invite propagate event")
-        self.created_events.append((self._cals[0].service, self._cals[0].url,
+        self.created_events.append((self._cals[0].service, "primary",
                                     new_event))
 
         self.cal.sync()
@@ -147,9 +160,21 @@ class EndToEndTest(unittest.TestCase):
 
         self.cal.sync()
 
+        self.assertEqual(patched['id'], new_event['id'])
+
         for c in self._cals:
             e = c.events.get(new_event['id'], None)
             self.assertIsNotNone(e)
             self.assertEqual(patched['id'], e['id'])
             # self.assertEqual(e['start'], patched['start'])
             # self.assertEqual(e['end'], patched['end'])
+
+        svc.patch(calendarId="primary",eventId=new_event['id'],
+                             body={"status": "cancelled"}).execute()
+
+        self.cal.sync()
+
+        for c in self._cals:
+            e = c.events.get(new_event['id'], None)
+            self.assertIsNotNone(e)
+            self.assertEqual(e['status'], 'cancelled')
