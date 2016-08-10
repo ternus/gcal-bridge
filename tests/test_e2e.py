@@ -13,8 +13,8 @@ from utils import *
 import logging
 from pprint import pformat
 
-FORMAT = "[%(levelname)-8s:%(filename)-15s:%(lineno)4s: %(funcName)20.20s ] %(message)s"
-logging.basicConfig(format=FORMAT, level=logging.DEBUG)
+# FORMAT = "[%(levelname)-8s:%(filename)-15s:%(lineno)4s: %(funcName)20.20s ] %(message)s"
+# logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
 @unittest.skipUnless(os.path.isfile(datafile("client_id.json")),
                      "Only run on a machine with valid secrets.")
@@ -106,9 +106,13 @@ class EndToEndTest(unittest.TestCase):
         for c in cals[1:]:
             self.assertEqual(s, set(c.active_events()))
 
-    def sync_and_check(self, expected_sync_val=0, cal=None):
+    def sync_and_check(self, mn=0, mx=0, cal=None):
         if cal is None: cal = self.cal
-        self.assertGreaterEqual(cal.sync(), expected_sync_val)
+        r = cal.sync()
+        if mn:
+            self.assertGreaterEqual(r, mn)
+        if mx:
+            self.assertLessEqual(r, mx)
         self.assertHasSameEvents(cals=cal.calendars)
 
     def test_e2e_working(self):
@@ -140,17 +144,8 @@ class EndToEndTest(unittest.TestCase):
 
         self.sync_and_check(1)
 
-        # for c in self._cals:
-        #     self.assertEqual(len(c.events), ec[c.url] + 1)
-        #     for other_c in self._cals:
-        #         for (eid, e) in c.events.iteritems():
-        #             self.assertIsInstance(e, gcalbridge.calendar.Event)
-        #             if not e.active():
-        #                 continue
-        #             self.assertEqual(cmp(e, other_c.events[eid]), 0)
-
         for field in ["summary", "description", "location"]:
-            k = str(randint(1, 10000000000))
+            k = self.tag()
             c.service.events().patch(calendarId=c.url, eventId=new_event['id'],
                                      body={field: k}).execute()
             self.sync_and_check(1)
@@ -172,7 +167,7 @@ class EndToEndTest(unittest.TestCase):
 
     def test_double_sync(self):
         self.sync_and_check()
-        self.sync_and_check()
+        self.sync_and_check(mx=0)
 
     def test_create_lots_of_events(self):
         for c in self._cals:
@@ -284,7 +279,3 @@ class EndToEndTest(unittest.TestCase):
         self.assertEvent(new_event['id'], tests={
                     'status': 'cancelled'
         })
-        # for c in self._cals:
-        #     e = c.events.get(new_event['id'], None)
-        #     self.assertIsNotNone(e)
-        #     self.assertEqual(e['status'], 'cancelled')
