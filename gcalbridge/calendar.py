@@ -11,6 +11,7 @@ from errors import BadConfigError
 from copy import deepcopy
 
 MAX_ACTIONS_PER_BATCH = 900
+ITERATION_LIMIT = 100
 
 
 class Event(dict):
@@ -382,19 +383,29 @@ class SyncedCalendar:
         add or update that event as needed.
         """
 
-        remaining = True
+        changes = 0
+        total_changes = 0
+        iterations = 0
 
-        while remaining:
+        while changes or (iterations == 0):
+            total_changes += changes
+            changes = 0
             for cal in self.calendars:
                 logging.info("Updating calendar: %s" % cal.url)
                 # First, get the latest set of events from Google.
-                remaining = cal.update_events()
+                changes += cal.update_events()
                 # Start a batch on this calendar.
-                #cal.begin_batch()
+                cal.begin_batch()
                 # Update our set of event IDs.
                 self.event_set.update(cal.events.keys())
 
-            remaining += sum([self.sync_event(eid) for eid in self.event_set])
+            changes += sum([self.sync_event(eid) for eid in self.event_set])
 
             for cal in self.calendars:
-                remaining += cal.push_events()
+                changes += cal.push_events()
+                cal.commit_batch()
+            iterations += 1
+            if iterations > ITERATION_LIMIT:
+                raise RuntimeError("Bug: exceeded iteration limit.")
+            logging.debug("sync() iteration %d: %d changes, %d total", iterations, changes, total_changes)
+        return total_changes

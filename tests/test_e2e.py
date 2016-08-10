@@ -13,8 +13,8 @@ from utils import *
 import logging
 from pprint import pformat
 
-logging.basicConfig(level=logging.DEBUG)
-
+FORMAT = "[%(levelname)-8s:%(filename)-15s:%(lineno)4s: %(funcName)20.20s ] %(message)s"
+logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
 @unittest.skipUnless(os.path.isfile(datafile("client_id.json")),
                      "Only run on a machine with valid secrets.")
@@ -23,14 +23,14 @@ class EndToEndTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.config = gcalbridge.Config(datafile('config_e2e.json'))
-        # cals = cls.config.setup()
-        # for cal in cals.values():
-        #     cal.sync()
-        #     for c in cal.calendars:
-        #         for e in c.events.values():
-        #             if e.active():
-        #                 e['status'] = 'cancelled'
-        #         c.push_events()
+        cals = cls.config.setup()
+        for cal in cals.values():
+            cal.sync()
+            for c in cal.calendars:
+                for e in c.events.values():
+                    if e.active():
+                        e['status'] = 'cancelled'
+                c.push_events()
 
     def setUp(self):
         self.calendars = EndToEndTest.config.setup()
@@ -53,6 +53,49 @@ class EndToEndTest(unittest.TestCase):
     @property
     def _cals(self):
         return self.cal.calendars
+
+    def tag(self):
+        return str(randint(100000000, 1000000000))
+
+    def wait_for_backend(self, cal=None):
+        if cal is None:
+            time.sleep(3)
+        else:
+            start = time.time()
+            e = cal.service.events().list(calendarId=cal.url).execute().get('etag')
+            while ((e == cal.service.events().list(calendarId=cal.url).execute().get('etag')) and
+                   (time.time() - start) < 3):
+                time.sleep(.2)
+
+    def random_event(self, tag=None, attendees=None, additional=None):
+        start = randint(1,24)
+        e =  gcalbridge.calendar.Event({
+             'summary': "test random %s %s" %(tag, datetime.datetime.now().isoformat()),
+             'start': {
+                 'dateTime': (datetime.datetime.now() +
+                              datetime.timedelta(hours=start)).isoformat(),
+                 'timeZone': 'America/New_York'
+             },
+             'end': {
+                 'dateTime': (datetime.datetime.now() +
+                              datetime.timedelta(hours=start+1)).isoformat(),
+                 'timeZone': 'America/New_York'
+             }
+        })
+        if attendees:
+            e['attendees'] = attendees
+        if additional:
+            e.update(additional)
+        return e
+
+    def assertEvent(self, id, cals=None, tests={}):
+        if cals is None: cals=self._cals
+        for c in cals:
+            e = c.events.get(id, None)
+            self.assertIsNotNone(e)
+            self.assertIsInstance(e, gcalbridge.calendar.Event)
+            for t in tests.keys():
+                self.assertEqual(e[t], tests[t])
 
     def test_e2e_working(self):
         for c in self._cals:
@@ -111,41 +154,41 @@ class EndToEndTest(unittest.TestCase):
             self.assertEqual(e['status'], "cancelled")
             self.assertFalse(e.active())
 
-    def test_propagate_invite(self):
-        svc = self._cals[0].service.events()
+    def test_double_sync(self):
+        before = self.cal.sync()
+        after = self.cal.sync()
+        self.assertEqual(after, 0)
 
+    def test_propagate_invite(self):
+        cal = self._cals[0]
+        svc = cal.service.events()
+        tag = self.tag()
         new_event = svc.insert(calendarId="primary",
-                   body={
-                        'summary': "test invite propagate event",
-                        'start': {
-                            'dateTime': (datetime.datetime.now() +
-                                         datetime.timedelta(hours=1)).isoformat(),
-                            'timeZone': 'America/New_York'
-                        },
-                        'end': {
-                            'dateTime': (datetime.datetime.now() +
-                                         datetime.timedelta(hours=2)).isoformat(),
-                            'timeZone': 'America/New_York'
-                        },
-                        'attendees': [
-                            {
-                                'email': self._cals[0].url,
-                                'resource': True
-                            }
-                        ]
-                   }).execute()
+                   body=self.random_event(tag=tag)).execute()
 
         self.assertIn('summary', new_event)
-        self.assertEqual(new_event['summary'], "test invite propagate event")
-        self.created_events.append((self._cals[0].service, "primary",
+        self.assertIn(tag, new_event['summary'])
+        self.created_events.append((cal.service, "primary",
                                     new_event))
 
         self.cal.sync()
 
         for c in self._cals:
             e = c.events.get(new_event['id'], None)
-            self.assertIsNotNone(e)
-            # self.assertGreater([a for a in e['attendees']])
+            self.assertIsNone(e)
+
+        patched = svc.patch(calendarId="primary", eventId=new_event['id'],
+                            body={'attendees': [
+                 {
+                     'email': cal.url,
+                     'resource': True
+                 }]}).execute()
+
+        self.wait_for_backend(cal)
+
+        self.assertGreater(self.cal.sync(), 0)
+
+        self.assertEvent(new_event['id'])
 
         patched = svc.patch(calendarId="primary", eventId=new_event['id'],
                 body={
@@ -161,21 +204,17 @@ class EndToEndTest(unittest.TestCase):
                     },
 
                 }).execute()
+        self.wait_for_backend(cal)
 
-        self.cal.sync()
+        self.assertGreater(self.cal.sync(), 0)
 
         self.assertEqual(patched['id'], new_event['id'])
 
-        for c in self._cals:
-            e = c.events.get(new_event['id'], None)
-            self.assertIsNotNone(e)
-            self.assertEqual(patched['id'], e['id'])
-            # self.assertEqual(e['start'], patched['start'])
-            # self.assertEqual(e['end'], patched['end'])
+        self.assertEvent(patched['id'])
 
         svc.patch(calendarId="primary", eventId=new_event['id'],
                              body={"status": "cancelled"}).execute()
-        time.sleep(1)  # give the backend a second to catch up
+        self.wait_for_backend(cal)  #  give the backend a second to catch up
         self.cal.sync()
 
         for c in self._cals:
