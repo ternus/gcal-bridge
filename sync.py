@@ -29,6 +29,7 @@ def main():
         try:
             for cal in calendars:
                 calendars[cal].sync()
+                exception_count = 0
         except HttpError as e:
             if e.resp.reason in ['userRateLimitExceeded', 'quotaExceeded',
                                 'internalServerError', 'backendError']:
