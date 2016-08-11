@@ -305,7 +305,7 @@ class Calendar:
         data in `event`.
         """
         if self.read_only:
-            logging.debug("RO: %s => %s" % (event['id'], self.name))
+            logging.debug("RO: %s => %s" % (new_event['id'], self.name))
             return None
         action = self.service.events().patch(calendarId=self.url,
                                              eventId=event_id,
@@ -318,7 +318,7 @@ class Calendar:
         data in `event`.
         """
         if self.read_only:
-            logging.debug("RO: %s ~> %s" % (event['id'], self.name))
+            logging.debug("RO: %s ~> %s" % (new_event['id'], self.name))
             return None
         # new_event['sequence'] += 1
         action = self.service.events().update(calendarId=self.url,
@@ -335,7 +335,7 @@ class Calendar:
         updates = 0
         for eid, e in self.events.iteritems():
             if e.dirty:
-                # logging.debug("Pushing dirty event %s", eid)
+                logging.debug("Pushing dirty event %s", eid)
                 self.update_event(eid, e)
                 e.dirty = False
                 updates += 1

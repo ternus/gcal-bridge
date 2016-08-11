@@ -76,7 +76,7 @@ class EndToEndTest(unittest.TestCase):
                 time.sleep(.2)
 
     def random_event(self, tag=None, attendees=None, additional=None):
-        start = randint(1,24)
+        start = randint(24,2400)
         e =  gcalbridge.calendar.Event({
              'summary': "test random %s %s" %(tag, datetime.datetime.now().isoformat()),
              'start': {
