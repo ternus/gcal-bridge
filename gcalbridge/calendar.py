@@ -9,8 +9,9 @@ from collections import defaultdict
 from apiclient.errors import HttpError
 from errors import BadConfigError
 from copy import deepcopy
+import time
 
-MAX_ACTIONS_PER_BATCH = 900
+MAX_ACTIONS_PER_BATCH = 950
 ITERATION_LIMIT = 100
 
 
@@ -94,6 +95,7 @@ class Calendar:
         self.batch_count = 0
         self.read_only = False
         self.calendar_metadata = None
+        self.ratelimit = 0
 
         if 'read_only' in config:
             self.read_only = config['read_only']
@@ -161,7 +163,8 @@ class Calendar:
                 exception)
             logging.debug(pformat(result))
             logging.debug(pformat(exception))
-            return 0
+            raise exception
+            # return 0
         updated = 0
         for event in result.get("items", []):
             id = event['id']
@@ -217,6 +220,9 @@ class Calendar:
             # Only commit a batch when necessary, to save on HTTP requests.
             logging.debug("Calendar %s committing batch of %d" % (self.url,
                 self.batch_count))
+            if self.ratelimit:
+                time.sleep(self.ratelimit / 1000.0)
+                self.ratelimit = 0
             result = self.batch.execute()
             #self.update_events_from_result(result)
             # logging.debug(pformat(result))
@@ -233,6 +239,7 @@ class Calendar:
                 exception: self.update_events_from_result(response,
                 exception=exception))
             self.batch_count += 1
+            self.ratelimit += 2
             if self.batch_count > MAX_ACTIONS_PER_BATCH:
                 self.commit_batch()
                 self.begin_batch()
@@ -328,10 +335,14 @@ class Calendar:
         updates = 0
         for eid, e in self.events.iteritems():
             if e.dirty:
-                logging.debug("Pushing dirty event %s", eid)
+                # logging.debug("Pushing dirty event %s", eid)
                 self.update_event(eid, e)
                 e.dirty = False
                 updates += 1
+            # if updates > MAX_ACTIONS_PER_BATCH:
+            #     if batch:
+            #         self.commit_batch()
+            #         self.begin_batch()
         if batch: self.commit_batch()
         return updates
 
@@ -393,24 +404,33 @@ class SyncedCalendar:
         iterations = 0
 
         while changes or (iterations == 0):
-            total_changes += changes
-            changes = 0
-            for cal in self.calendars:
-                logging.info("Updating calendar: %s" % cal.url)
-                # First, get the latest set of events from Google.
-                changes += cal.update_events()
-                # Start a batch on this calendar.
-                cal.begin_batch()
-                # Update our set of event IDs.
-                self.event_set.update(cal.events.keys())
+            try:
+                total_changes += changes
+                changes = 0
+                for cal in self.calendars:
+                    logging.info("Updating calendar: %s" % cal.url)
+                    # First, get the latest set of events from Google.
+                    changes += cal.update_events()
+                    # Start a batch on this calendar.
+                    cal.begin_batch()
+                    # Update our set of event IDs.
+                    self.event_set.update(cal.events.keys())
 
-            changes += sum([self.sync_event(eid) for eid in self.event_set])
+                changes += sum([self.sync_event(eid) for eid in self.event_set])
 
-            for cal in self.calendars:
-                changes += cal.push_events()
-                cal.commit_batch()
-            iterations += 1
-            if iterations > ITERATION_LIMIT:
-                raise RuntimeError("Bug: exceeded iteration limit.")
-            logging.debug("sync() iteration %d: %d changes, %d total", iterations, changes, total_changes)
+                for cal in self.calendars:
+                    changes += cal.push_events()
+                    cal.commit_batch()
+                iterations += 1
+                if iterations > ITERATION_LIMIT:
+                    raise RuntimeError("Bug: exceeded iteration limit.")
+                logging.debug("sync() iteration %d: %d changes, %d total", iterations, changes, total_changes)
+            except HttpError as e:
+                iterations += 1
+                time.sleep(2 ** (iterations))
+                for cal in self.calendars:
+                    cal.ratelimit += 1000 * (2 ** iterations)
+        for cal in self.calendars:
+            cal.ratelimit = False
+
         return total_changes

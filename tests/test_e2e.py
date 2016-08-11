@@ -182,15 +182,16 @@ class EndToEndTest(unittest.TestCase):
         Create 100 random events distributed between calendars, sync, and
         cancel them.
         """
-        for c in self._cals:
-            c._batch = c.service.new_batch_http_request()
-        for i in range(100):
-            c = choice(self._cals)
-            c._batch.add(c.service.events().insert(calendarId=c.url,
-                                                 body=self.random_event()
-                                                 ))
-        for c in self._cals:
-            c._batch.execute()
+        for j in range(1):
+            for c in self._cals:
+                c._batch = c.service.new_batch_http_request()
+            for i in range(500):
+                c = choice(self._cals)
+                c._batch.add(c.service.events().insert(calendarId=c.url,
+                                                     body=self.random_event()
+                                                     ))
+            for c in self._cals:
+                c._batch.execute()
 
         self.sync_and_check(99)
 
@@ -305,4 +306,4 @@ class EndToEndTest(unittest.TestCase):
         rw_cal.service.events().insert(calendarId=rw_cal.url,
                                        body=self.random_event()).execute()
 
-        self.sync_and_check()
+        self.sync_and_check(mx=1)
