@@ -123,3 +123,18 @@ you can specify the `credfile` parameter:
 ```
 
 The system will then begin syncing your accounts.
+
+### Increase your quota
+
+You might run into
+[`userRateLimitExceeded`](https://developers.google.com/google-apps/calendar/v3/errors)
+errors if you have a lot of events. The system is designed to use
+[exponential
+backoff](https://developers.google.com/google-apps/calendar/v3/errors#exponential-backoff)
+to avoid this problem, but this may cause your calendars to take a while
+to sync if you have lots of events. To get around this, go to the
+[Google Developer Console quota
+page](https://console.developers.google.com/apis/api/calendar-json.googleapis.com/quotas)
+(make sure your project is selected in the top dropdown if you have more
+than one) and click the edit links (pencil-shaped) next to "requests per
+day" and "requests per 100 seconds per user" to increase your quotas.
